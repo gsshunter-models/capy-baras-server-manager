@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/.test-temp/
+artifacts/
+qa-*
+*.user
+*.suo
+.vs/
+profiles.json
+relay-settings.json
+host-key.txt
+*.pfx
+**/sessions/

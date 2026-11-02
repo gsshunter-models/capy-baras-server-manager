@@ -1,0 +1,1 @@
+Download the ZIP from the GitHub release, extract the complete folder, and run CapyBaraServerManager.exe. The game host, player tunnel and relay are all inside this app. See the root README for requirements, setup and the public-backend requirement. SHA256SUMS.txt verifies the portable download.
