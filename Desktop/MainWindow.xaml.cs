@@ -23,7 +23,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public ObservableCollection<PlayerSnapshot> Players { get; } = [];
     private List<TrackInfo> tracks = [];
     private ServerProfile? profile;
-    public ServerProfile? Profile { get => profile; set { if (profile == value) return; profile = value; Raise(); if (IsLoaded) { WatchGame(); _ = Run(ScanAsync); } } }
+    public ServerProfile? Profile { get => profile; set { if (profile == value) return; profile = value; Raise(); if (DuckToken != null) DuckToken.Clear(); Raise(nameof(DuckCredentialStatus)); if (IsLoaded) { WatchGame(); _ = Run(ScanAsync); } } }
     private string status = "Stopped", liveTrack = "No session", count = "0 connected", connection = "Not connected. Create a session, then copy its invite.", join = "", relayStatus = "Relay stopped", relayJoin = "", notice = "Original server and game files are kept in place.", details = "", log = "", roomStatus = "No joined session";
     public string StatusText { get => status; private set { status = value; Raise(); } }
     public string LiveTrack { get => liveTrack; private set { liveTrack = value; Raise(); } }
@@ -133,11 +133,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         var imported = await Task.Run(() => { var n = 0; foreach (var path in Directory.EnumerateFiles(Profile.GameFolder, "*.trackinfo")) try { _ = TrackInfo.Import(path, state); n++; } catch (IOException) { } catch (InvalidDataException) { } return n; });
         await ScanAsync(); Notice = $"Imported {imported} game trackinfos into the manager. Game files were left in place.";
     }
-    private async Task StartAsync()
+    private Task StartAsync() => Profile?.AutomaticSetup == true ? StartAutomaticAsync() : StartManualAsync();
+    private async Task StartManualAsync(ServerProfile? prepared = null, bool preparedNetwork = false)
     {
         if (Profile is not { } current) return;
         var startingRows = current.Rotation.Where(r => r.Enabled).ToList();
-        var p = ProfileStore.Copy(current); p.Id = current.Id; p.Name = current.Name;
+        var p = prepared ?? ProfileStore.Copy(current); p.Id = current.Id; p.Name = current.Name;
         if (p.Options.Any(o => o.Enabled && OptionCatalog.Specs.Any(s => s.Flag == o.Flag && s.Executable)) && MessageBox.Show(this, "This profile enables custom JavaScript, command extensions, or a results command. Start with those executable options?", "Custom server commands", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
         var relayPairing = p.UseRelay ? RelayPairing.Parse(p.RelayPairing) : null;
         if (relayPairing != null && p.BindAddress != "0.0.0.0" && p.BindAddress != "127.0.0.1") throw new InvalidDataException("Relay hosting needs bind address 127.0.0.1 or 0.0.0.0.");
@@ -157,7 +158,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             JoinText = new JoinAddress(p.BindAddress != "0.0.0.0" ? p.BindAddress : RouterMapping.LocalAddresses().FirstOrDefault() ?? "127.0.0.1", p.Port).ToString();
             ConnectionStatus = p.BindAddress == "127.0.0.1" ? "Loopback-only host. Only this PC can join directly." : "Local server ready. LAN players can use the LAN address; outside players need a reachable public UDP address.";
-            if (p.AutoMap && p.BindAddress == "0.0.0.0")
+            if (!preparedNetwork && p.AutoMap && p.BindAddress == "0.0.0.0")
             {
                 var map = new RouterMapping(); map.Status += s => Dispatcher.BeginInvoke(() => ConnectionStatus = s); maps.Add(map);
                 try { await map.OpenAsync(p.Port); if (map.ExternalAddress != null && RouterMapping.IsPublic(map.ExternalAddress)) JoinText = new JoinAddress(map.ExternalAddress.ToString(), map.PublicPort).ToString(); }
@@ -169,6 +170,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     }
     private async Task CleanupConnectionAsync()
     {
+        await StopDnsMonitorAsync(false); GameAddress = "";
         if (tunnel != null) { await tunnel.DisposeAsync(); tunnel = null; }
         foreach (var map in maps) await map.DisposeAsync(); maps.Clear(); ConnectionStatus = "Host connection closed. Owned router mappings released.";
     }
@@ -227,7 +229,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try { relay.Start(IPAddress.Any, ports.Udp, ports.Tcp); pairing = new(new(address.Host, relayMaps.Count == 2 ? relayMaps[1].PublicPort : ports.Tcp), relayMaps.Count == 2 ? relayMaps[0].PublicPort : ports.Udp, identity.Key, identity.Fingerprint); RelayJoinText = new JoinAddress(address.Host, pairing.GamePort).ToString(); SaveRelaySettings(); RelayStatus = "Relay listening. Allow UDP and TCP through the firewall and router on this public machine."; }
         catch { await relay.DisposeAsync(); relay = null; throw; }
     });
-    private async Task StopRelayAsync() { if (relay != null) await relay.DisposeAsync(); relay = null; pairing = null; foreach (var map in relayMaps) await map.DisposeAsync(); relayMaps.Clear(); RelayStatus = "Relay stopped"; }
+    private async Task StopRelayAsync() { await StopDnsMonitorAsync(true); if (relay != null) await relay.DisposeAsync(); relay = null; pairing = null; foreach (var map in relayMaps) await map.DisposeAsync(); relayMaps.Clear(); RelayStatus = "Relay stopped"; }
     private async void RelayStop_Click(object s, RoutedEventArgs e) => await Run(StopRelayAsync);
     private async void RelayMap_Click(object s, RoutedEventArgs e) => await Run(async () =>
     {

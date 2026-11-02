@@ -14,8 +14,9 @@ public sealed class RouterMapping : IAsyncDisposable
     public IPAddress? ExternalAddress { get; private set; }
     public int PublicPort => mapping?.PublicPort ?? 0;
     public event Action<string>? Status;
-    public async Task OpenAsync(int port, Protocol protocol = Protocol.Udp, CancellationToken ct = default)
+    public async Task OpenAsync(int port, Protocol protocol = Protocol.Udp, CancellationToken ct = default, int? publicPort = null)
     {
+        var requestedPort = publicPort ?? port;
         var found = new TaskCompletionSource<INatDevice>(TaskCreationOptions.RunContinuationsAsynchronously);
         void Found(object? sender, DeviceEventArgs e) => found.TrySetResult(e.Device);
         NatUtility.DeviceFound += Found;
@@ -27,12 +28,18 @@ public sealed class RouterMapping : IAsyncDisposable
         if (device.NatProtocol == NatProtocol.Upnp)
         {
             var existing = await device.GetAllMappingsAsync().WaitAsync(TimeSpan.FromSeconds(8), ct);
-            if (existing.Any(m => m.Protocol == protocol && m.PublicPort == port)) throw new IOException("This router port already has a mapping. Choose another port; the existing mapping was left unchanged.");
+            if (existing.Any(m => m.Protocol == protocol && m.PublicPort == requestedPort)) throw new IOException("The required router port is already assigned. Its existing mapping was left unchanged. Stop the other hosted session or use the relay backend.");
         }
-        mapping = await device.CreatePortMapAsync(new Mapping(protocol, port, port, 3600, "CapyBaraServer-" + Guid.NewGuid().ToString("N")[..12])).WaitAsync(TimeSpan.FromSeconds(10), ct);
+        mapping = await device.CreatePortMapAsync(new Mapping(protocol, port, requestedPort, 3600, "CapyBaraServer-" + Guid.NewGuid().ToString("N")[..12])).WaitAsync(TimeSpan.FromSeconds(10), ct);
+        if (publicPort != null && mapping.PublicPort != requestedPort) { await device.DeletePortMapAsync(mapping).WaitAsync(TimeSpan.FromSeconds(4), ct); mapping = null; throw new IOException("The router could not reserve the default game port. A name without a port requires that port to be available."); }
         ExternalAddress = await device.GetExternalIPAsync().WaitAsync(TimeSpan.FromSeconds(6), ct);
         Status?.Invoke(IsPublic(ExternalAddress) ? "Router mapping created. Outside connectivity still needs a friend to test." : "Router has a private/upstream address. A relay or upstream port forwarding is needed.");
         renew = RenewAsync(stop.Token);
+    }
+    public async Task<IPAddress> RefreshAddressAsync(CancellationToken ct = default)
+    {
+        if (device == null || mapping == null) throw new IOException("The router mapping is no longer active.");
+        ExternalAddress = await device.GetExternalIPAsync().WaitAsync(TimeSpan.FromSeconds(6), ct); return ExternalAddress;
     }
     private async Task RenewAsync(CancellationToken ct)
     {

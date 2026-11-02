@@ -26,6 +26,8 @@ public sealed class ServerProfile
     public string Greeting { get; set; } = "Welcome to the capybara paddock!";
     public bool AutoMap { get; set; } = true;
     public bool UseRelay { get; set; }
+    public bool AutomaticSetup { get; set; } = true;
+    public string DuckDnsDomain { get; set; } = "";
     public string RelayPairing { get; set; } = "";
     public ObservableCollection<RotationEntry> Rotation { get; set; } = [];
     public ObservableCollection<ServerOption> Options { get; set; } = OptionCatalog.NewOptions();

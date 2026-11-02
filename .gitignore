@@ -11,3 +11,4 @@ relay-settings.json
 host-key.txt
 *.pfx
 **/sessions/
+**/credentials/

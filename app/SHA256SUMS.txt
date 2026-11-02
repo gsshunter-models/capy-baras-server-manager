@@ -1,1 +1,1 @@
-c83b8e6a2be20a836bc367f5458572bc3d3d6eb58d4d04749c9dfe8201ecc956  CapyBaraServerManager-v1.0.0-windows-portable.zip
+70f2859689b19d9c19b17164163d170cf0a929a2c406189319364ccdb286a9f8  CapyBaraServerManager-v1.1.0-windows-portable.zip

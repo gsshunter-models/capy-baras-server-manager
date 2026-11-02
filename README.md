@@ -2,13 +2,25 @@
 
 A capybara-and-orange Windows app for hosting MX Simulator sessions with friends. Server configuration, track rotations, live administration, router setup, and the **Create session / Join session** network are inside the manager. No Radmin, separate VPN client, standalone relay tool, VPN driver, or system route changes are required.
 
-**[Download the Windows app v1.0.0](https://github.com/gsshunter-models/capy-baras-server-manager/releases/download/v1.0.0/CapyBaraServerManager-v1.0.0-windows-portable.zip)** · [Release page](https://github.com/gsshunter-models/capy-baras-server-manager/releases/tag/v1.0.0)
+**[Download the Windows app v1.1.0](https://github.com/gsshunter-models/capy-baras-server-manager/releases/download/v1.1.0/CapyBaraServerManager-v1.1.0-windows-portable.zip)** · [Release page](https://github.com/gsshunter-models/capy-baras-server-manager/releases/tag/v1.1.0)
 
 Extract the complete ZIP and run **CapyBaraServerManager.exe**. Requires Windows and the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/9.0). MX Simulator is separate. Hosting uses your existing **mxserver.exe** folder; the native server and game/track files are not redistributed in this repository. Joining only requires the manager and game.
 
+## Automatic setup and a name in the game
+
+Open **Connect**, use **Open DuckDNS** to sign in and claim a free name once, then enter that name and your account token. **Save name & token** encrypts the token for your Windows account and this profile. It is stored separately from profile JSON and is not copied into room invites. The manager cannot create an authenticated DuckDNS account or claim a name on your behalf without that one-time account step.
+
+Press **Set up & host**. The app configures the default game port, requests its scoped firewall rule (Windows can ask for permission), requests router forwarding where needed, updates the DuckDNS address and starts the server. DNS is refreshed every five minutes while hosting so changes to the public address can be picked up. Friends can type **your-name.duckdns.org** directly into MX Simulator; no port number is needed. Use **Copy game address** for that plain hostname. The in-app room invite remains available separately.
+
+For a public room backend, use **Automatic relay setup** on Run relay after saving its DuckDNS name/token. It configures the backend name, game/tunnel ports, firewall and router mapping, then starts the in-app relay. It also pairs the local host automatically; on a different PC, paste the backend's private host pairing once. The private game host can then share the backend's hostname for ordinary in-game joining, even when that host is behind CGNAT. The public backend itself must have incoming connectivity. No hosted relay infrastructure is provisioned by this app.
+
+If automatic setup cannot acquire the default game port, the router blocks automatic mappings, the ISP uses CGNAT, or DuckDNS rejects the account/name, the app reports that step instead of claiming the server is ready. An already assigned router mapping is left unchanged. First-time DNS changes can take time to resolve, and a friend should test the connection from outside your LAN. DNS naming does not bypass CGNAT. Existing advanced manual controls remain available by turning off automatic setup.
+
+References: [DuckDNS API](https://www.duckdns.org/spec.jsp), [MX Simulator's default-port hostname behavior](https://forum.mxsimulator.com/viewtopic.php?p=35122).
+
 ## Create and join sessions
 
-The host chooses a profile and tracks, then presses **Create session**. **Connect** contains the session invite and join controls. A friend pastes the invite into **Join session**. If the game is closed, the manager launches it and connects it. If it is already open, the manager copies the address for the game's Connect screen and leaves the current session alone. Keep the manager open while using its room network.
+The host chooses a profile and tracks, then presses **Set up & host**. Turn off automatic setup to use the existing manual networking controls. **Connect** contains the session invite and join controls. A friend pastes the invite into **Join session**. If the game is closed, the manager launches it and connects it. If it is already open, the manager copies the address for the game's Connect screen and leaves the current session alone. Keep the manager open while using its room network.
 
 - **Direct hosting:** the app starts mxserver and can request a UPnP/NAT-PMP UDP mapping from the router. LAN users use the LAN address; outside users need the public mapped address. Port mappings renew while hosting and are removed on stop where supported. Existing UPnP mappings are not overwritten.
 - **Integrated room network:** host and player tunnels are implemented inside this app. A `capyroom://` invite lets the player's manager carry native game UDP packets through its own pinned TLS connection to the room backend. The game connects to a loopback endpoint created by the manager. Both host and friend can make outbound connections; they do not install a VPN or run another networking executable.
@@ -51,4 +63,6 @@ dotnet publish Desktop/CapyServer.Desktop.csproj -c Release --no-self-contained 
 
 An optional read-only native integration check uses `-- --native PATH_TO_MXSERVER_FOLDER` on the tests. It binds a temporary server only to loopback, copies trackinfos into disposable session storage, checks native status and admin-command acceptance, then shuts it down. It does not open router or firewall ports. Synthetic checks cover argument safety/order, exact imports, profile independence, invite validation, separate host/player authority, TLS certificate rejection, multiple UDP clients, in-app player bridges, 8 KB packet preservation, a player leaving, and port cleanup. Router-specific behavior and real internet latency still require testing on the target networks.
 
-Networking uses [Mono.Nat 3.0.4](https://github.com/mono/Mono.Nat) under its included MIT notice. Native server behavior is based on the supplied server README and JavaScript API. MX Simulator and mxserver belong to their respective author. Made with Codex.
+Networking uses [Mono.Nat 3.0.4](https://github.com/mono/Mono.Nat) under its included MIT notice. Windows credential checks: `dotnet run --project Tests.Windows/CapyServer.WindowsTests.csproj -c Release -p:BuildInParallel=false`. These check encrypted token roundtrips, profile isolation and exclusion from profile JSON. DuckDNS HTTP checks use synthetic responses and never change real DNS records.
+
+Native server behavior is based on the supplied server README and JavaScript API. MX Simulator and mxserver belong to their respective author. Made with Codex.

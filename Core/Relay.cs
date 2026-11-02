@@ -12,12 +12,14 @@ namespace CapyServer.Core;
 
 public sealed record JoinAddress(string Host, int Port)
 {
+    public const int DefaultPort = 19800;
+    public string GameAddress => Port == DefaultPort ? Host : ToString();
     public override string ToString() => Host + ":" + Port;
     public static JoinAddress Parse(string text)
     {
         text = text.Trim(); if (!text.Contains("://")) text = "mxsimulator://" + text;
-        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme != "mxsimulator" || uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0 || (uri.AbsolutePath is not ("" or "/")) || Uri.CheckHostName(uri.Host) == UriHostNameType.Unknown || uri.Host.Contains(':') || uri.Port is < 1 or > 65535) throw new InvalidDataException("Enter a host:port address or mxsimulator://host:port link.");
-        return new(uri.IdnHost, uri.Port);
+        if (!Uri.TryCreate(text, UriKind.Absolute, out var uri) || uri.Scheme != "mxsimulator" || uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0 || (uri.AbsolutePath is not ("" or "/")) || Uri.CheckHostName(uri.Host) == UriHostNameType.Unknown || uri.Host.Contains(':') || uri.Port is 0 or > 65535) throw new InvalidDataException("Enter a hostname, host:port address or mxsimulator:// link.");
+        return new(uri.IdnHost, uri.Port == -1 ? DefaultPort : uri.Port);
     }
     public string Link => "mxsimulator://" + this;
 }

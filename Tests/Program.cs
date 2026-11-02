@@ -17,6 +17,7 @@ int TcpPort() { var t = new TcpListener(IPAddress.Loopback, 0); t.Start(); var p
 async Task Wait(Func<bool> ready) { var w = Stopwatch.StartNew(); while (!ready()) { if (w.Elapsed > TimeSpan.FromSeconds(10)) throw new TimeoutException(); await Task.Delay(80); } }
 try
 {
+    await Test("DuckDNS names, default game address, provider errors, secret handling and cancellation", DuckDnsTests.Run);
     var a = Synthetic("A.trackinfo", "TrackA"); var b = Synthetic("B.trackinfo", "TrackB");
     await Test("Trackinfo validation, import and deduplication", () =>
     {
