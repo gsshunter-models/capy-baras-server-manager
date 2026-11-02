@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-server-manager-v1.1.0
+  group: publish-server-manager-v1.1.1
   cancel-in-progress: false
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
           set -euo pipefail
           cd app
           tr -d '\r' < SHA256SUMS.txt | sha256sum --check -
-      - name: Publish v1.1.0
+      - name: Publish v1.1.1
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,8 +40,8 @@ jobs:
           RELEASE_TARGET: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if gh release view v1.1.0 >/dev/null 2>&1; then
-            gh release upload v1.1.0 app/CapyBaraServerManager-v1.1.0-windows-portable.zip app/SHA256SUMS.txt --clobber
+          if gh release view v1.1.1 >/dev/null 2>&1; then
+            gh release upload v1.1.1 app/CapyBaraServerManager-v1.1.1-windows-portable.zip app/SHA256SUMS.txt --clobber
           else
-            gh release create v1.1.0 app/CapyBaraServerManager-v1.1.0-windows-portable.zip app/SHA256SUMS.txt --target "$RELEASE_TARGET" --title "Capy Bara's Server Manager v1.1.0" --notes-file docs/releases/v1.1.0.md --latest
+            gh release create v1.1.1 app/CapyBaraServerManager-v1.1.1-windows-portable.zip app/SHA256SUMS.txt --target "$RELEASE_TARGET" --title "Capy Bara's Server Manager v1.1.1" --notes-file docs/releases/v1.1.1.md --latest
           fi

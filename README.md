@@ -2,7 +2,7 @@
 
 A capybara-and-orange Windows app for hosting MX Simulator sessions with friends. Server configuration, track rotations, live administration, router setup, and the **Create session / Join session** network are inside the manager. No Radmin, separate VPN client, standalone relay tool, VPN driver, or system route changes are required.
 
-**[Download the Windows app v1.1.0](https://github.com/gsshunter-models/capy-baras-server-manager/releases/download/v1.1.0/CapyBaraServerManager-v1.1.0-windows-portable.zip)** · [Release page](https://github.com/gsshunter-models/capy-baras-server-manager/releases/tag/v1.1.0)
+**[Download the Windows app v1.1.1](https://github.com/gsshunter-models/capy-baras-server-manager/releases/download/v1.1.1/CapyBaraServerManager-v1.1.1-windows-portable.zip)** · [Release page](https://github.com/gsshunter-models/capy-baras-server-manager/releases/tag/v1.1.1)
 
 Extract the complete ZIP and run **CapyBaraServerManager.exe**. Requires Windows and the [.NET 9 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/9.0). MX Simulator is separate. Hosting uses your existing **mxserver.exe** folder; the native server and game/track files are not redistributed in this repository. Joining only requires the manager and game.
 

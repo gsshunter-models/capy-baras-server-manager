@@ -6,6 +6,9 @@ namespace CapyServer.Desktop;
 public static class Firewall
 {
     private static string Rule(string protocol, int port) => $"Capy Bara Server Manager {protocol} {port}";
+    // Windows maps a missing INetFwRules.Item entry to FileNotFoundException,
+    // rather than COMException, on some supported runtimes.
+    private static bool MissingRule(Exception error) => error.HResult is unchecked((int)0x80070002) or unchecked((int)0x80070490);
     public static bool IsConfigured(int udpPort, int? tcpPort = null)
     {
         dynamic policy = Activator.CreateInstance(Type.GetTypeFromProgID("HNetCfg.FwPolicy2")!)!;
@@ -15,7 +18,7 @@ public static class Firewall
             {
                 dynamic? rule = null;
                 try { rule = policy.Rules.Item(Rule(name, port)); if (!(bool)rule.Enabled || (int)rule.Direction != 1 || (int)rule.Action != 1 || (int)rule.Protocol != protocol || (string)rule.LocalPorts != port.ToString() || (int)rule.Profiles != 7) return false; }
-                catch (COMException) { return false; }
+                catch (Exception ex) when (MissingRule(ex)) { return false; }
                 finally { if (rule != null) Marshal.FinalReleaseComObject(rule); }
             }
             return true;
@@ -40,7 +43,7 @@ public static class Firewall
             foreach (var (name, protocol, port) in new[] { ("UDP", 17, udp), ("TCP", 6, tcp) }.Where(x => x.Item3 > 0))
             {
                 var ruleName = Rule(name, port);
-                if (args[index + 1] == "remove") { try { policy.Rules.Remove(ruleName); } catch (COMException) { } continue; }
+                if (args[index + 1] == "remove") { try { policy.Rules.Remove(ruleName); } catch (Exception ex) when (MissingRule(ex)) { } continue; }
                 dynamic rule = Activator.CreateInstance(Type.GetTypeFromProgID("HNetCfg.FWRule")!)!;
                 try { rule.Name = ruleName; rule.Description = "Inbound connection for a server explicitly hosted with Capy Bara's Server Manager."; rule.Protocol = protocol; rule.LocalPorts = port.ToString(); rule.Direction = 1; rule.Action = 1; rule.Enabled = true; rule.Profiles = 7; rule.Grouping = "Capy Bara's Server Manager"; policy.Rules.Add(rule); } finally { Marshal.FinalReleaseComObject(rule); }
             }
