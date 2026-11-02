@@ -1,4 +1,4 @@
-name: Publish app release
+name: Publish server manager release
 
 on:
   workflow_dispatch:
@@ -11,55 +11,37 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-v1.4.5
+  group: publish-server-manager-v1.0.0
   cancel-in-progress: false
 
 jobs:
   publish:
     if: github.repository == 'gsshunter-models/capy-baras-server-manager' && github.ref == 'refs/heads/main'
-    runs-on: windows-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: write
     steps:
-      - name: Check out the release source
+      - name: Check out verified release files
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Install .NET 9
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0.x
-      - name: Test and build v1.4.5
-        shell: pwsh
+      - name: Verify the tested Windows app
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          dotnet run --project Tests/MXSimModManager.Tests.csproj -c Release
-          if ($LASTEXITCODE -ne 0) { throw 'Core tests failed.' }
-          dotnet run --project Tests.Windows/MXSimModManager.WindowsTests.csproj -c Release -p:BuildInParallel=false
-          if ($LASTEXITCODE -ne 0) { throw 'Windows tests failed.' }
-          dotnet publish Desktop/MXSimModManager.csproj -c Release --no-self-contained -p:BuildInParallel=false -o artifacts/CapyBara-Mod-Manager-v1.4.5
-          if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
-          Copy-Item -LiteralPath README.md -Destination artifacts/CapyBara-Mod-Manager-v1.4.5/README.md
-          $version = (Get-Item artifacts/CapyBara-Mod-Manager-v1.4.5/CapyBaraServerManager.exe).VersionInfo.ProductVersion
-          if ($version -ne '1.4.5') { throw "Unexpected app version: $version" }
-          New-Item -ItemType Directory -Path artifacts/release -Force | Out-Null
-          $zip = 'artifacts/release/CapyBaraServerManager-v1.4.5-windows-portable.zip'
-          Compress-Archive -Path artifacts/CapyBara-Mod-Manager-v1.4.5/* -DestinationPath $zip
-          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  CapyBaraServerManager-v1.4.5-windows-portable.zip" | Set-Content -LiteralPath artifacts/release/SHA256SUMS.txt -Encoding utf8NoBOM
-      - name: Publish v1.4.5 and its download assets
-        shell: pwsh
+          set -euo pipefail
+          cd app
+          tr -d '\r' < SHA256SUMS.txt | sha256sum --check -
+      - name: Publish v1.0.0
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_TARGET: ${{ github.sha }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          gh release view v1.4.5
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload v1.4.5 artifacts/release/CapyBaraServerManager-v1.4.5-windows-portable.zip artifacts/release/SHA256SUMS.txt --clobber
-          } else {
-            gh release create v1.4.5 artifacts/release/CapyBaraServerManager-v1.4.5-windows-portable.zip artifacts/release/SHA256SUMS.txt --target "$env:RELEASE_TARGET" --title "Capy Bara's Server Manager v1.4.5" --notes-file docs/releases/v1.4.5.md --latest
-          }
-          if ($LASTEXITCODE -ne 0) { throw 'GitHub release publication failed.' }
+          set -euo pipefail
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            gh release upload v1.0.0 app/CapyBaraServerManager-v1.0.0-windows-portable.zip app/SHA256SUMS.txt --clobber
+          else
+            gh release create v1.0.0 app/CapyBaraServerManager-v1.0.0-windows-portable.zip app/SHA256SUMS.txt --target "$RELEASE_TARGET" --title "Capy Bara's Server Manager v1.0.0" --notes-file docs/releases/v1.0.0.md --latest
+          fi
